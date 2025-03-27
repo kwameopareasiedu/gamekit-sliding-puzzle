@@ -12,6 +12,9 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * This class takes images in puzzles resource directory
@@ -19,7 +22,7 @@ import java.nio.file.Paths;
  */
 public class PuzzleCreator {
   public static void main(String[] args) throws IOException, URISyntaxException {
-    createPuzzlePieces("level1", 3, 512);
+    createPuzzlePieces("level1", 4, 512);
   }
 
   private static void createPuzzlePieces(String directoryPath, int gridSize, int pieceSize) throws IOException, URISyntaxException {
@@ -47,6 +50,7 @@ public class PuzzleCreator {
       refImage = adjustedImage;
     }
 
+    // Slice the image into puzzle pieces
     BufferedImage pieceImg = new BufferedImage(pieceSize, pieceSize, refImage.getType());
     Graphics2D pieceGraphics = pieceImg.createGraphics();
 
@@ -60,24 +64,29 @@ public class PuzzleCreator {
     File dirFile = new File(new URI(dirUrl.toString()));
     File configFile = new File(dirFile, "config.txt");
     StringBuilder config = new StringBuilder();
+    List<String> indexList = new ArrayList<>();
 
     for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
+        int index = y * gridSize + x;
         int x1 = x * refImageSliceWidth;
         int y1 = y * refImageSliceHeight;
         int x2 = x1 + refImageSliceWidth;
         int y2 = y1 + refImageSliceHeight;
+        File sliceFile = new File(dirFile, String.format("piece-%d.jpg", index));
 
         pieceGraphics.drawImage(refImage, 0, 0, pieceSize, pieceSize, x1, y1, x2, y2, null);
-
-        int index = y * gridSize + x;
-        File sliceFile = new File(dirFile, String.format("slice-%d.jpg", index));
         ImageIO.write(pieceImg, "jpg", sliceFile);
         config.append(sliceFile.getName()).append("\n");
+        indexList.add(String.valueOf(index));
 
-        System.out.println("Slice output to " + sliceFile.toURI());
+        System.out.println("Saved " + sliceFile.toURI());
       }
     }
+
+    Collections.shuffle(indexList);
+    config.insert(0, String.join(",", indexList) + "\n");
+    config.insert(0, gridSize + "\n");
 
     Files.write(Paths.get(configFile.toURI()), config.toString().getBytes());
     refImageStream.close();
