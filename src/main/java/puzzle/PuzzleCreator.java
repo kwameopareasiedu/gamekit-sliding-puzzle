@@ -4,17 +4,10 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * This class takes images in puzzles resource directory
@@ -22,73 +15,78 @@ import java.util.List;
  */
 public class PuzzleCreator {
   public static void main(String[] args) throws IOException, URISyntaxException {
-    createPuzzlePieces("level1", 4, 512);
+    URL imagesDirPath = PuzzleCreator.class.getResource(String.format("/%s", "images"));
+    if (imagesDirPath == null) throw new NullPointerException("Images directory not found in resources");
+
+    File imagesDir = new File(new URI(imagesDirPath.toString()));
+    if (!imagesDir.isDirectory()) throw new IllegalArgumentException("Images directory is not a directory");
+
+    File[] imageFiles = imagesDir.listFiles();
+    if (imageFiles == null) throw new IllegalArgumentException("Image file list is empty");
+
+    for (var imageFile : imageFiles) {
+      String fileName = imageFile.getName();
+      String[] splitParts = fileName.split("\\.")[0].split("-");
+      String levelName = splitParts[0];
+      int levelSize = Integer.parseInt(splitParts[1]);
+
+      createLevelData(imageFile, levelName, levelSize);
+    }
   }
 
-  private static void createPuzzlePieces(String directoryPath, int gridSize, int pieceSize) throws IOException, URISyntaxException {
-    if (gridSize <= 1) throw new IllegalArgumentException("Pieces must be more than 1");
+  private static void createLevelData(File levelImageFile, String levelName, int levelSize) throws IOException, URISyntaxException {
+    if (levelSize < 3) throw new IllegalArgumentException("Grid size must be 3 or greater");
 
-    // Read in the reference image
-    String refImagePath = String.format("/%s/ref.jpg", directoryPath);
-    InputStream refImageStream = PuzzleCreator.class.getResourceAsStream(refImagePath);
-    if (refImageStream == null) throw new FileNotFoundException(String.format("%s not found", refImagePath));
-    BufferedImage refImage = ImageIO.read(refImageStream);
+    BufferedImage levelImage = ImageIO.read(levelImageFile);
 
-    // Adjust the image so it is a multiple of gridSize
-    int adjustedImageWidth = (int) (Math.ceil(refImage.getWidth() / (double) gridSize) * gridSize);
-    int adjustedImageHeight = (int) (Math.ceil(refImage.getHeight() / (double) gridSize) * gridSize);
+    // Adjust the levelImage so it is perfectly divisible by levelSize
+    int adjustedWidth = (int) (Math.ceil(levelImage.getWidth() / (double) levelSize) * levelSize);
+    int adjustedHeight = (int) (Math.ceil(levelImage.getHeight() / (double) levelSize) * levelSize);
 
-    if (adjustedImageWidth != refImage.getWidth() || adjustedImageHeight != refImage.getHeight()) {
-      BufferedImage adjustedImage = new BufferedImage(adjustedImageWidth, adjustedImageHeight, refImage.getType());
-      Graphics2D adjustedImageGraphics = adjustedImage.createGraphics();
+    if (adjustedWidth != levelImage.getWidth() || adjustedHeight != levelImage.getHeight()) {
+      BufferedImage newImage = new BufferedImage(adjustedWidth, adjustedHeight, levelImage.getType());
+      Graphics2D g = newImage.createGraphics();
 
-      adjustedImageGraphics.drawImage(
-        refImage, 0, 0, adjustedImageWidth, adjustedImageHeight,
-        0, 0, refImage.getWidth(), refImage.getHeight(), null
+      g.drawImage(
+        levelImage, 0, 0, adjustedWidth, adjustedHeight,
+        0, 0, levelImage.getWidth(), levelImage.getHeight(), null
       );
 
-      refImage = adjustedImage;
+      levelImage = newImage;
+      g.dispose();
     }
 
     // Slice the image into puzzle pieces
-    BufferedImage pieceImg = new BufferedImage(pieceSize, pieceSize, refImage.getType());
-    Graphics2D pieceGraphics = pieceImg.createGraphics();
+    int sliceCount = levelSize * levelSize;
+    int sliceSize = levelImage.getWidth() / levelSize;
+    BufferedImage[] sliceImages = new BufferedImage[sliceCount];
 
-    int refImageSliceWidth = refImage.getWidth() / gridSize;
-    int refImageSliceHeight = refImage.getHeight() / gridSize;
+    for (int sliceIdx = 0; sliceIdx < sliceCount; sliceIdx++) {
+      BufferedImage sliceBuffer = new BufferedImage(sliceSize, sliceSize, levelImage.getType());
+      Graphics2D g = sliceBuffer.createGraphics();
+      int x = sliceIdx / levelSize;
+      int y = sliceIdx % levelSize;
 
-    String dirPath = "/" + directoryPath;
-    URL dirUrl = PuzzleCreator.class.getResource(dirPath);
-    if (dirUrl == null) throw new FileNotFoundException(String.format("%s not found", dirPath));
-
-    File dirFile = new File(new URI(dirUrl.toString()));
-    File configFile = new File(dirFile, "config.txt");
-    StringBuilder config = new StringBuilder();
-    List<String> indexList = new ArrayList<>();
-
-    for (int y = 0; y < gridSize; y++) {
-      for (int x = 0; x < gridSize; x++) {
-        int index = y * gridSize + x;
-        int x1 = x * refImageSliceWidth;
-        int y1 = y * refImageSliceHeight;
-        int x2 = x1 + refImageSliceWidth;
-        int y2 = y1 + refImageSliceHeight;
-        File sliceFile = new File(dirFile, String.format("piece-%d.jpg", index));
-
-        pieceGraphics.drawImage(refImage, 0, 0, pieceSize, pieceSize, x1, y1, x2, y2, null);
-        ImageIO.write(pieceImg, "jpg", sliceFile);
-        config.append(sliceFile.getName()).append("\n");
-        indexList.add(String.valueOf(index));
-
-        System.out.println("Saved " + sliceFile.toURI());
-      }
+      int sx1 = x * sliceSize, sy1 = y * sliceSize;
+      int sx2 = (x + 1) * sliceSize, sy2 = (y + 1) * sliceSize;
+      g.drawImage(levelImage, 0, 0, sliceSize, sliceSize, sx1, sy1, sx2, sy2, null);
+      sliceImages[sliceIdx] = sliceBuffer;
+      g.dispose();
     }
 
-    Collections.shuffle(indexList);
-    config.insert(0, String.join(",", indexList) + "\n");
-    config.insert(0, gridSize + "\n");
+    URL resDirUrl = PuzzleCreator.class.getResource("/");
+    if (resDirUrl == null) throw new IOException("Res dir not found");
+    File levelOutDir = new File(new File(resDirUrl.toURI()), levelName + "-" + levelSize);
+    if (!levelOutDir.exists() && !levelOutDir.mkdirs())
+      throw new IOException("Could not create level directory");
 
-    Files.write(Paths.get(configFile.toURI()), config.toString().getBytes());
-    refImageStream.close();
+    for (int i = 0, sliceImagesLength = sliceImages.length; i < sliceImagesLength; i++) {
+      BufferedImage sliceImage = sliceImages[i];
+      File sliceOutFile = new File(levelOutDir, String.format("%d.jpg", i));
+      ImageIO.write(sliceImage, "jpg", sliceOutFile);
+    }
+
+    File levelImageOutFile = new File(levelOutDir, "level.jpg");
+    ImageIO.write(levelImage, "jpg", levelImageOutFile);
   }
 }
