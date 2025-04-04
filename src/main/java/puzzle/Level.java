@@ -12,11 +12,17 @@ import java.util.Random;
 public class Level {
   public static final Level LEVEL_1;
   public static final Level LEVEL_2;
+  public static final Level[] LEVELS;
 
   static {
     try {
       LEVEL_1 = new Level("level1-4");
       LEVEL_2 = new Level("level2-4");
+
+      LEVELS = new Level[] {
+        new Level("level1-4"),
+        new Level("level2-4"),
+      };
     } catch (IOException | URISyntaxException e) {
       throw new RuntimeException(e);
     }
