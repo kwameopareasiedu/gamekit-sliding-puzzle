@@ -13,9 +13,9 @@ import java.net.URL;
  * This class takes images in puzzles resource directory
  * and slices them up into the different puzzle pieces
  */
-public class PuzzleCreator {
+public class LevelCreator {
   public static void main(String[] args) throws IOException, URISyntaxException {
-    URL imagesDirPath = PuzzleCreator.class.getResource(String.format("/%s", "images"));
+    URL imagesDirPath = LevelCreator.class.getResource(String.format("/%s", "images"));
     if (imagesDirPath == null) throw new NullPointerException("Images directory not found in resources");
 
     File imagesDir = new File(new URI(imagesDirPath.toString()));
@@ -74,7 +74,7 @@ public class PuzzleCreator {
       g.dispose();
     }
 
-    URL resDirUrl = PuzzleCreator.class.getResource("/");
+    URL resDirUrl = LevelCreator.class.getResource("/");
     if (resDirUrl == null) throw new IOException("Res dir not found");
     File levelOutDir = new File(new File(resDirUrl.toURI()), levelName + "-" + levelSize);
     if (!levelOutDir.exists() && !levelOutDir.mkdirs())
