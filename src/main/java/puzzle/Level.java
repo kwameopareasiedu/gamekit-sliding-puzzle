@@ -1,6 +1,7 @@
 package puzzle;
 
 import javax.imageio.ImageIO;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -10,10 +11,12 @@ import java.util.Random;
 
 public class Level {
   public static final Level LEVEL_1;
+  public static final Level LEVEL_2;
 
   static {
     try {
       LEVEL_1 = new Level("level1-4");
+      LEVEL_2 = new Level("level2-4");
     } catch (IOException | URISyntaxException e) {
       throw new RuntimeException(e);
     }
@@ -23,6 +26,7 @@ public class Level {
   public final int size;
   public final BufferedImage image;
   public final BufferedImage[] sliceImages;
+  public final Color bgColor;
   public final int[] grid;
 
   private final Random rnd = new Random();
@@ -38,6 +42,7 @@ public class Level {
     image = ImageIO.read(new File(levelDir, "level.jpg"));
     sliceImages = new BufferedImage[size * size];
     grid = new int[size * size];
+    bgColor = getAverageColor(image);
 
     for (int i = 0; i < sliceImages.length; i++) {
       sliceImages[i] = ImageIO.read(new File(levelDir, i + ".jpg"));
@@ -97,6 +102,24 @@ public class Level {
       int rowNumber = getRowNumberFromBelow(width, emptyTileIdx);
       return (rowNumber % 2 != 0) == (inversionCount % 2 == 0);
     }
+  }
+
+  private Color getAverageColor(BufferedImage image) {
+    int w = image.getWidth(), h = image.getHeight();
+    int redSum = 0, greenSum = 0, blueSum = 0;
+
+    for (int x = 0; x < w; x++) {
+      for (int y = 0; y < h; y++) {
+        int color = image.getRGB(x, y);
+        redSum += (color >> 16) & 0xFF;
+        greenSum += (color >> 8) & 0xFF;
+        blueSum += color & 0xFF;
+      }
+    }
+
+    int num = w * h;
+    int r = redSum / num, g = greenSum / num, b = blueSum / num;
+    return new Color(r << 16 | g << 8 | b);
   }
 }
 

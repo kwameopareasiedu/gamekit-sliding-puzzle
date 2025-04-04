@@ -19,7 +19,7 @@ import static dev.gamekit.utils.Math.clamp;
 
 public class SlidingPuzzle extends Scene {
   private static final Color CLEAR_COLOR = new Color(0x764A1F);
-  private static final int PIECE_SIZE = 48;
+  private static final int PIECE_SIZE = 128;
 
   private final Level level = Level.LEVEL_1;
   private final int[] grid = new int[level.size * level.size];
@@ -41,7 +41,7 @@ public class SlidingPuzzle extends Scene {
 
   public static void main(String[] args) {
     Application game = new Application(
-      new Config("Sliding Puzzle", Resolution.SVGA, false)
+      new Config("Sliding Puzzle", Resolution.HD, false)
     ) { };
     game.loadScene(new SlidingPuzzle());
     game.run();
@@ -74,7 +74,7 @@ public class SlidingPuzzle extends Scene {
 
   @Override
   protected void onRender() {
-    Renderer.setBackground(CLEAR_COLOR);
+    Renderer.setBackground(level.bgColor);
     Renderer.clear();
 
     for (int y = 0; y < level.size; y++) {
